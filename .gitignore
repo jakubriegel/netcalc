@@ -1,0 +1,6 @@
+sandbox.py
+.idea
+netcalc_env
+venv
+__pycache__
+common/__pycache__
