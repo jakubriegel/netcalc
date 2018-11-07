@@ -1,5 +1,6 @@
 import calendar
 import socket
+import sys
 import time
 import bitstring
 from threading import Thread, Lock
@@ -34,7 +35,7 @@ class Server(Thread):
         while True:
             command = input()
             if command == 'exit':
-                server.stop()
+                self.stop()
                 break
             else:
                 command = command.split()
@@ -181,8 +182,15 @@ class Server(Thread):
         return error.get_bytes()
 
 
-if __name__ == '__main__':
-    server = Server(LOCAL_HOST, PORT)
+def main():
+    args = sys.argv
+    host = args[1] if len(args) > 1 else LOCAL_HOST
+    port = int(args[2]) if len(args) > 2 else PORT
+    server = Server(host, port)
     server.start()
     server.menu()
     server.join()
+
+
+if __name__ == '__main__':
+    main()
