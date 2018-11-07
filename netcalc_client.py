@@ -1,3 +1,4 @@
+import sys
 import socket
 import bitstring
 from common import utils
@@ -126,6 +127,13 @@ class Client:
             print(Operation.name_from_code(answer.operation) + ' ' + str(answer.a) + ' ' + str(answer.b) + ' -> ' + str(answer.result))
 
 
-if __name__ == '__main__':
-    client = Client(LOCAL_HOST, PORT)
+def main():
+    args = sys.argv
+    host = args[1] if len(args) > 1 else LOCAL_HOST
+    port = int(args[2]) if len(args) > 2 else PORT
+    client = Client(host, port)
     client.start()
+
+
+if __name__ == '__main__':
+    main()
