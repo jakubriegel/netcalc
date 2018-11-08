@@ -20,6 +20,7 @@ class Mode:
     QUERY_BY_SESSION_ID = 3
     QUERY_BY_RESULT_ID = 4
     ERROR = 5
+    IS_ALIVE = 6
 
     QUERY_BY_SESSION_ID_CMD = 'session'
     QUERY_BY_RESULT_ID_CMD = 'result'
@@ -38,6 +39,8 @@ class Mode:
             return 'QUERY_BY_RESULT_ID'
         elif code == Mode.ERROR:
             return 'ERROR'
+        elif code == Mode.IS_ALIVE:
+            return 'IS_ALIVE'
         else:
             return 'unknown method'
 

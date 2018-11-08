@@ -27,7 +27,7 @@ class Server(Thread):
         self.on = False
         utils.log('stopping listening...')
         for session in self.sessions:
-            session.stop()
+            self.sessions[session] = False
             session.join()
         utils.log('all sessions closed')
 
@@ -88,7 +88,9 @@ class Server(Thread):
                     if datagram.mode == Mode.CONNECT:
                         answer, session_id = self.connect(address)
                     elif datagram.session_id == session_id:
-                        if datagram.mode == Mode.DISCONNECT:
+                        if datagram.mode == Mode.IS_ALIVE:
+                            answer = self.__is_alive(datagram.session_id, handler)
+                        elif datagram.mode == Mode.DISCONNECT:
                             answer = self.disconnect(datagram.session_id, address)
                             self.sessions[handler] = False
                         elif datagram.mode == Mode.OPERATION:
@@ -100,15 +102,16 @@ class Server(Thread):
                         elif datagram.mode == Mode.OPERATION:
                             answer = self.__query_by_result_id(datagram.session_id, datagram.a)
                     else:
-                        answer = Datagram(Status.REFUSED, datagram.mode, datagram.session_id).get_bytes()
+                        answer = self.error(Error.UNAUTHORISED)
                 except (bitstring.ReadError, ValueError, TypeError):
                     answer = self.error(Error.CANNOT_READ_DATAGRAM, Mode.ERROR)
                 except:
                     answer = self.error(Error.INTERNAL_SERVER_ERROR, Mode.ERROR)
                 finally:
                     connection.sendall(answer)
-            except ConnectionAbortedError:
+            except (ConnectionAbortedError, ConnectionResetError):
                 utils.log('breaking listening for session: ' + str(session_id))
+                self.sessions[handler] = False
 
         connection.close()
         utils.log('session closed: ' + str(session_id))
@@ -124,6 +127,13 @@ class Server(Thread):
     def disconnect(session_id: int, address: tuple) -> bytes:
         answer = Datagram(Status.OK, Mode.DISCONNECT, session_id)
         utils.log('removed session: ' + str(session_id) + ' : ' + str(address))
+        return answer.get_bytes()
+
+    def __is_alive(self, session_id: int, handler: Thread):
+        if self.sessions[handler]:
+            answer = Datagram(Status.OK, Mode.IS_ALIVE, session_id)
+        else:
+            answer = Datagram(Status.REFUSED, Mode.IS_ALIVE, session_id)
         return answer.get_bytes()
 
     @staticmethod
