@@ -19,6 +19,7 @@ class Server(Thread):
 
         self.sessions = {}
         self.next_id = 1
+        self.next_id_lock = Lock()
 
     def run(self) -> None:
         self.listen()
@@ -117,8 +118,10 @@ class Server(Thread):
         utils.log('session closed: ' + str(session_id))
 
     def connect(self, address: tuple) -> (bytes, int):
+        self.next_id_lock.acquire()
         given_id = self.next_id
         self.next_id += 1
+        self.next_id_lock.release()
         answer = Datagram(Status.OK, Mode.CONNECT, given_id)
         utils.log('new session: ' + str(given_id) + ' : ' + str(address[0]))
         return answer.get_bytes(), given_id
