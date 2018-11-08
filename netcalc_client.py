@@ -11,6 +11,7 @@ class Client:
         self.host = host
         self.port = port
         self.session_id = 0
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def start(self):
         if self.__connect():
@@ -58,10 +59,8 @@ class Client:
                     print('invalid command')
 
     def __send_datagram(self, datagram: Datagram, session_query: bool = False) -> Datagram:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.host, self.port))
-        s.sendall(datagram.get_bytes())
-        answer_bin = s.recv(MAX_DATAGRAM_SIZE)
+        self.socket.sendall(datagram.get_bytes())
+        answer_bin = self.socket.recv(MAX_DATAGRAM_SIZE)
         try:
             answer = Datagram.from_bytes(answer_bin)
         except (bitstring.ReadError, ValueError, TypeError):
@@ -79,11 +78,12 @@ class Client:
 
     def __connect(self) -> bool:
         utils.log('connecting to : ' + self.host + ':' + str(self.port))
+        self.socket.connect((self.host, self.port))
         datagram = Datagram(Status.NEW, Mode.CONNECT)
         answer = self.__send_datagram(datagram)
-        utils.log('connected to : ' + self.host + ':' + str(self.port))
         self.session_id = answer.session_id
         if answer.status == Status.OK:
+            utils.log('connected to : ' + self.host + ':' + str(self.port))
             return True
         else:
             utils.log(self.host + ':' + str(self.port) + ' refused to connect')
@@ -95,7 +95,7 @@ class Client:
         answer = self.__send_datagram(datagram)
         if answer.status == Status.OK:
             utils.log('disconnected from : ' + self.host + ':' + str(self.port))
-            self.session_id = answer.session_id
+            self.socket.close()
             return True
         else:
             utils.log(
