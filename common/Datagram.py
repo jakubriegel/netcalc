@@ -57,7 +57,6 @@ class Datagram:
 
         return cls.from_result_list(status, mode, session_id, results)
 
-    # results list[tuple[result_id, operation, a, b, result, timestamp]]
     @classmethod
     def from_result_list(cls, status: int, mode: int, session_id: int, results: list):
         return cls(status, mode, session_id, results=results)
