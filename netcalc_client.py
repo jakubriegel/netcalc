@@ -21,12 +21,12 @@ class Client:
     def start(self):
         self.__connect()
         if self.connected:
-            self.is_alive_handler = Thread(name='is_alive_handler', target=self.is_alive)
+            self.is_alive_handler = Thread(name='is_alive_handler', target=self.__is_alive)
             self.is_alive_handler.start()
-            self.menu()
+            self.__menu()
             self.is_alive_handler.join()
 
-    def menu(self):
+    def __menu(self):
         print('You can now use netcalc')
         print(Operation.POWER_CMD + ' a b\t: raise a to the power of b')
         print(Operation.LOG_CMD + ' a b\t\t: get the logarithm of a of the base of b')
@@ -69,26 +69,6 @@ class Client:
                 else:
                     print('invalid command')
 
-    def is_alive(self) -> None:
-        while self.connected:
-            self.connected_lock.acquire()
-            datagram = Datagram(Status.NEW, Mode.IS_ALIVE, self.session_id)
-            answer: Datagram
-
-            try:
-                answer = self.__send_datagram(datagram)
-            except (ConnectionAbortedError, ConnectionResetError):
-                utils.log('server went down')
-                self.connected = False
-
-            if answer.status != Status.OK:
-                utils.log('server rejected session')
-                self.connected = False
-            if not self.connected:
-                print('press ENTER to exit')
-            self.connected_lock.release()
-            time.sleep(1)
-
     def __send_datagram(self, datagram: Datagram, session_query: bool = False) -> Datagram:
         self.socket.sendall(datagram.get_bytes())
         answer_bin = self.socket.recv(MAX_DATAGRAM_SIZE)
@@ -103,8 +83,8 @@ class Client:
                 )
             if answer.status == Status.REFUSED:
                 print(
-                    'server refused to ' + Mode.name_from_code(datagram.mode) + ' reason: ' + Error.name_from_code(
-                        answer.a)
+                    'server refused to ' + Mode.name_from_code(datagram.mode) +
+                    ' reason: ' + Error.name_from_code(answer.a)
                 )
             return answer if not session_query else Datagram.results_from_bytes(answer_bin)
 
@@ -139,6 +119,26 @@ class Client:
                 True
             )
         self.connected_lock.release()
+
+    def __is_alive(self) -> None:
+        while self.connected:
+            self.connected_lock.acquire()
+            datagram = Datagram(Status.NEW, Mode.IS_ALIVE, self.session_id)
+            answer: Datagram
+
+            try:
+                answer = self.__send_datagram(datagram)
+            except (ConnectionAbortedError, ConnectionResetError):
+                utils.log('server went down')
+                self.connected = False
+
+            if answer.status != Status.OK:
+                utils.log('server rejected session')
+                self.connected = False
+            if not self.connected:
+                print('press ENTER to exit')
+            self.connected_lock.release()
+            time.sleep(1)
 
     def __operation(self, operation: int, a: float, b: float):
         datagram = Datagram(Status.NEW, Mode.OPERATION, self.session_id, operation, a, b)

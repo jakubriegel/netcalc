@@ -84,15 +84,15 @@ class Server(Thread):
                 # noinspection PyBroadException
                 try:
                     datagram = Datagram.from_bytes(data)
-                    utils.log('received: ' + str(datagram))
+                    # utils.log('received: ' + str(datagram))
                     answer: bytes
                     if datagram.mode == Mode.CONNECT:
-                        answer, session_id = self.connect(address)
+                        answer, session_id = self.__connect(address)
                     elif datagram.session_id == session_id:
                         if datagram.mode == Mode.IS_ALIVE:
                             answer = self.__is_alive(datagram.session_id, handler)
                         elif datagram.mode == Mode.DISCONNECT:
-                            answer = self.disconnect(datagram.session_id, address)
+                            answer = self.__disconnect(datagram.session_id, address)
                             self.sessions[handler] = False
                         elif datagram.mode == Mode.OPERATION:
                             answer = self.__operation(datagram.session_id, datagram.operation, datagram.a, datagram.b)
@@ -103,11 +103,11 @@ class Server(Thread):
                         elif datagram.mode == Mode.OPERATION:
                             answer = self.__query_by_result_id(datagram.session_id, datagram.a)
                     else:
-                        answer = self.error(Error.UNAUTHORISED)
+                        answer = self.__error(Error.UNAUTHORISED)
                 except (bitstring.ReadError, ValueError, TypeError):
-                    answer = self.error(Error.CANNOT_READ_DATAGRAM, Mode.ERROR)
+                    answer = self.__error(Error.CANNOT_READ_DATAGRAM, Mode.ERROR)
                 except:
-                    answer = self.error(Error.INTERNAL_SERVER_ERROR, Mode.ERROR)
+                    answer = self.__error(Error.INTERNAL_SERVER_ERROR, Mode.ERROR)
                 finally:
                     connection.sendall(answer)
             except (ConnectionAbortedError, ConnectionResetError):
@@ -117,7 +117,7 @@ class Server(Thread):
         connection.close()
         utils.log('session closed: ' + str(session_id))
 
-    def connect(self, address: tuple) -> (bytes, int):
+    def __connect(self, address: tuple) -> (bytes, int):
         self.next_id_lock.acquire()
         given_id = self.next_id
         self.next_id += 1
@@ -127,7 +127,7 @@ class Server(Thread):
         return answer.get_bytes(), given_id
 
     @staticmethod
-    def disconnect(session_id: int, address: tuple) -> bytes:
+    def __disconnect(session_id: int, address: tuple) -> bytes:
         answer = Datagram(Status.OK, Mode.DISCONNECT, session_id)
         utils.log('removed session: ' + str(session_id) + ' : ' + str(address))
         return answer.get_bytes()
@@ -201,7 +201,7 @@ class Server(Thread):
         print(str(result_id) + ': ' + Operation.name_from_code(Operation.POWER) + ' ' + str(2) + ' ' + str(3) + ' -> ' + str(8))
 
     @staticmethod
-    def error(code: int, mode: int = Mode.ERROR, session_id: int = 0, operation: int = 0) -> bytes:
+    def __error(code: int, mode: int = Mode.ERROR, session_id: int = 0, operation: int = 0) -> bytes:
         utils.log(Error.name_from_code(code) + ' on session: ' + str(session_id), True)
         error = Datagram(Status.ERROR, mode, session_id, operation, a=code)
         return error.get_bytes()
@@ -216,7 +216,6 @@ class Handler(Thread):
         self.connection = connection
 
     def run(self) -> None:
-        # print(type(self))
         self.server.handle_incoming_connection(self.connection, self.address, self)
 
     def stop(self):
