@@ -9,7 +9,7 @@ After making changes in dependencies remember to do: `pip freeze > requirements.
 
 
 ## run
-To run as server type: `python netcalc_server.py -h server_ip -p server_port` <br>
-To run as client type: `python netcalc_client.py-h server_ip -p server_port`
+To run as server type: `python netcalc_server.py server_ip server_port` <br>
+To run as client type: `python netcalc_client.py server_ip server_port`
 
-If flags `-h` and `-p` are not supplied, the values used are respectively `127.0.0.1`(localhost) and `1500`
+If flags `server_ip` ale `server_port` are not supplied, the values used are respectively `127.0.0.1`(localhost) and `1500`
