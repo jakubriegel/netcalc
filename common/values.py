@@ -52,11 +52,11 @@ class Operation:
     LOG = 1
     LOG_CMD = 'log'
 
-    OP_3 = 2  # TODO: [Artur] add OP_3 and OP_4
-    OP_3_CMD = 'op3'
+    OP_3 = 2
+    OP_3_CMD = 'GM'  # Geometric Mean
 
     OP_4 = 3
-    OP_4_CMD = 'op4'
+    OP_4_CMD = 'aCb'  # Binomial coefficient
 
     @staticmethod
     def name_from_code(code: int) -> str:
@@ -75,6 +75,7 @@ class Error:
     UNAUTHORISED = 1
     CANNOT_READ_DATAGRAM = 2
     INTERNAL_SERVER_ERROR = 3
+    NOT_EXISTING_DATA = 4
 
     @staticmethod
     def name_from_code(code: int) -> str:
@@ -86,6 +87,8 @@ class Error:
             return 'CANNOT_READ_DATAGRAM'
         elif code == Error.INTERNAL_SERVER_ERROR:
             return 'INTERNAL_SERVER_ERROR'
+        elif code == Error.NOT_EXISTING_DATA:
+            return 'NOT_EXISTING_DATA'
         else:
             return 'unknown error'
 
