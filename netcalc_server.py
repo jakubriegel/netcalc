@@ -2,6 +2,8 @@ import calendar
 import socket
 import sys
 import time
+from math import factorial, log, sqrt
+
 import bitstring
 from threading import Thread, Lock
 
@@ -11,6 +13,7 @@ from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, Error, MAX_
 
 
 class Server(Thread):
+
     def __init__(self, host: str, port: int) -> None:
         super().__init__(name='server')
         self.host = host
@@ -20,6 +23,9 @@ class Server(Thread):
         self.sessions = {}
         self.next_id = 1
         self.next_id_lock = Lock()
+
+        self.next_result_id = 1
+        self.results_storage = {}
 
     def run(self) -> None:
         self.listen()
@@ -76,7 +82,7 @@ class Server(Thread):
         utils.log('listening stopped')
 
     def handle_incoming_connection(self, connection: socket, address: tuple, handler) -> None:
-        session_id = 0
+        session_id = 1
         while self.sessions[handler]:
             try:
                 data = connection.recv(MAX_DATAGRAM_SIZE)
@@ -100,12 +106,12 @@ class Server(Thread):
                             answer = self.__query_by_session_id(datagram.session_id)
                         elif datagram.mode == Mode.QUERY_BY_RESULT_ID:
                             answer = self.__query_by_result_id(datagram.session_id, datagram.a)
-                        elif datagram.mode == Mode.OPERATION:
-                            answer = self.__query_by_result_id(datagram.session_id, datagram.a)
                     else:
                         answer = self.__error(Error.UNAUTHORISED)
                 except (bitstring.ReadError, ValueError, TypeError):
                     answer = self.__error(Error.CANNOT_READ_DATAGRAM, Mode.ERROR)
+                except Exception as e:
+                    print(e)
                 except:
                     answer = self.__error(Error.INTERNAL_SERVER_ERROR, Mode.ERROR)
                 finally:
@@ -139,20 +145,28 @@ class Server(Thread):
             answer = Datagram(Status.REFUSED, Mode.IS_ALIVE, session_id)
         return answer.get_bytes()
 
-    @staticmethod
-    def __operation(session_id: int, operation: int, num_a: float, num_b: float) -> bytes:
+    def __operation(self, session_id: int, operation: int, num_a: float, num_b: float) -> bytes:
         utils.log('received call for ' + Operation.name_from_code(operation) + ' from session: ' + str(session_id))
-        answer = Datagram(Status.OK, Mode.OPERATION, session_id, operation, num_a, num_b, result_id=1)  # TODO: [Artur] implement result_id
-        # TODO: [Artur] implement operations and results storage
+        answer = Datagram(Status.OK, Mode.OPERATION, session_id, operation, num_a, num_b)
+        answer.result_id = self.next_result_id
+
+        result = 0
+        result_id = self.next_result_id
+
         if operation == Operation.POWER:
-            result = num_a + num_b
-            answer.result = result
+            result = num_a**num_b
         elif operation == Operation.LOG:
-            print('log not yet implemented')
+            result = log(num_b)/log(num_a)
         elif operation == Operation.OP_3:
-            print('op3 not yet implemented')
+            result = sqrt(num_a*num_b)
         elif operation == Operation.OP_4:
-            print('op4 not yet implemented')
+            result = factorial(num_a)/(factorial(num_a-num_b)*factorial(num_b))
+
+        answer.result = result
+        # result_tuple = (session_id, operation, num_a, num_b, result, result_id,)
+
+        # self.results_storage[session_id][result_id] = result_tuple
+        self.next_result_id += 1
 
         return answer.get_bytes()
 
@@ -160,45 +174,48 @@ class Server(Thread):
         # TODO: [Artur] implement querying by session id
         utils.log('querying by session_id: ' + str(session_id))
         answer = Datagram.from_result_list(
-            Status.OK, Mode.QUERY_BY_SESSION_ID, session_id,
-            [
-                (98765, 0, 2.5, 2, 6.25, 98778987),
-                (98766, 0, 3, 2, 9, 98778997),
-                (98767, 0, 2.5, 2, 6.25, 98779087),
-                (98768, 0, 2.5, 2, 6.25, 98779097),
-                (98769, 0, 2.5, 2, 6.25, 98779807),
-                (98770, 0, 2.5, 2, 6.25, 98780007),
-                (98771, 0, 2.5, 2, 6.25, 98780017)
-            ]
-        )
+            Status.OK, Mode.QUERY_BY_SESSION_ID, session_id, self.results_storage[session_id])
 
         return answer.get_bytes()
 
     def __query_by_session_id_cmd(self, session_id: int) -> None:
         # TODO: [Artur] implement querying by session id from terminal
-        results = [
-                (98765, 0, 2.5, 2, 6.25, 98778987),
-                (98766, 0, 3, 2, 9, 98778997),
-                (98767, 0, 2.5, 2, 6.25, 98779087),
-                (98768, 0, 2.5, 2, 6.25, 98779097),
-                (98769, 0, 2.5, 2, 6.25, 98779807),
-                (98770, 0, 2.5, 2, 6.25, 98780007),
-                (98771, 0, 2.5, 2, 6.25, 98780017)
-            ]
+        results = self.results_storage[session_id]
         for result in results:
-            print(Operation.name_from_code(result[1]) + ' ' + str(result[2]) + ' ' + str(result[3]) + ' -> ' + str(result[4]))
+            print('session_id = ' + str(result[1]) +
+                  ' result id = ' + str(result[6]) +
+                  ' operation: ' + str(Operation.name_from_code(result[2])) +
+                  ' a = ' + str(result[3]) +
+                  ' b = ' + str(result[4]) +
+                  ' result = ' + str(result[5]))
 
     def __query_by_result_id(self, session_id: int, result_id: int) -> bytes:
         # TODO: [Artur] implement querying by result id
         answer = Datagram(
-            Status.OK, Mode.QUERY_BY_RESULT_ID, session_id, Operation.POWER, 2, 3, 8, result_id, calendar.timegm(time.gmtime())
+            Status.OK, Mode.QUERY_BY_RESULT_ID, self.results_storage[session_id][result_id],
+            calendar.timegm(time.gmtime())
         )
         print(answer)
         return answer.get_bytes()
 
     def __query_by_result_id_cmd(self, result_id: int) -> None:
         # TODO: [Artur] implement querying by result id from terminal
-        print(str(result_id) + ': ' + Operation.name_from_code(Operation.POWER) + ' ' + str(2) + ' ' + str(3) + ' -> ' + str(8))
+        result = None
+
+        for i in range(0, self.next_id):
+            if self.results_storage[i][result_id]:
+                result = self.results_storage[i][result_id]
+
+        if result:
+            print('session_id = ' + str(result[1]) +
+                  ' result id = ' + str(result[6]) +
+                  ' operation: ' + str(Operation.name_from_code(result[2])) +
+                  ' a = ' + str(result[3]) +
+                  ' b = ' + str(result[4]) +
+                  ' result = ' + str(result[5]))
+
+        else:
+            print(self.__error(Error.NOT_EXISTING_DATA))
 
     @staticmethod
     def __error(code: int, mode: int = Mode.ERROR, session_id: int = 0, operation: int = 0) -> bytes:

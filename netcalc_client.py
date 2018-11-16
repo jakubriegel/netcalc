@@ -29,9 +29,9 @@ class Client:
     def __menu(self):
         print('You can now use netcalc')
         print(Operation.POWER_CMD + ' a b\t: raise a to the power of b')
-        print(Operation.LOG_CMD + ' a b\t\t: get the logarithm of a of the base of b')
-        print(Operation.OP_3_CMD + ' a b\t\t: tba')
-        print(Operation.OP_4_CMD + ' a b\t\t: tba')
+        print(Operation.LOG_CMD + ' a b\t\t: get the logarithm of b of the base of a')
+        print(Operation.OP_3_CMD + ' a b\t\t: get the geometric mean of a and b')
+        print(Operation.OP_4_CMD + ' a b\t\t: get the value of binomial coefficient a choose b')
         print(Mode.QUERY_BY_SESSION_ID_CMD + '\t\t: get all calculations')
         print(Mode.QUERY_BY_RESULT_ID_CMD + ' id\t: get calculation by its id')
         print('exit\t\t: exit netcalc')
@@ -152,8 +152,12 @@ class Client:
         if answer.status == Status.OK:
             for result in answer.results:
                 # TODO: [Artur] improve presentation of results [maybe method in utils used both by client and server?]
-                print(Operation.name_from_code(result[1]) + ' ' + str(result[2]) + ' ' + str(result[3]) + ' -> ' + str(
-                    result[4]))
+                print('session_id = ' + str(result[1]) +
+                      ' result id = ' + str(result[6]) +
+                      ' operation: ' + str(Operation.name_from_code(result[2])) +
+                      ' a = ' + str(result[3]) +
+                      ' b = ' + str(result[4]) +
+                      ' result = ' + str(result[5]))
 
     def __query_by_result_id(self, result_id: int):
         datagram = Datagram(Status.NEW, Mode.QUERY_BY_RESULT_ID, self.session_id, a=result_id)
@@ -161,8 +165,12 @@ class Client:
         if answer.status == Status.OK:
             # TODO: [Artur] improve presentation of result
             print(answer)
-            print(Operation.name_from_code(answer.operation) + ' ' + str(answer.a) + ' ' + str(answer.b) + ' -> ' + str(
-                answer.result))
+            print('session_id = ' + str(result[1]) +
+                  ' result id = ' + str(result[6]) +
+                  ' operation: ' + str(Operation.name_from_code(result[2])) +
+                  ' a = ' + str(result[3]) +
+                  ' b = ' + str(result[4]) +
+                  ' result = ' + str(result[5]))
 
 
 def main():
