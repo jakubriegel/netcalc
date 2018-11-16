@@ -6,6 +6,7 @@ from threading import Thread, Lock
 from common import utils
 from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, MAX_DATAGRAM_SIZE, Error
 from common.Datagram import Datagram
+from typing import List
 
 
 class Client:
@@ -69,35 +70,43 @@ class Client:
                 else:
                     print('invalid command')
 
-    def __send_datagram(self, datagram: Datagram, session_query: bool = False) -> Datagram:
+    def __send_datagram(self, datagram: Datagram) -> List[Datagram]:
         self.socket.sendall(datagram.get_bytes())
-        answer_bin = self.socket.recv(MAX_DATAGRAM_SIZE)
-        try:
-            answer = Datagram.from_bytes(answer_bin)
-        except (bitstring.ReadError, ValueError, TypeError):
-            print('error reading datagram')
-        else:
-            if answer.status == Status.ERROR:
-                print(
-                    'error on server: ' + Mode.name_from_code(answer.mode) + ' - ' + Error.name_from_code(answer.a)
-                )
-            if answer.status == Status.REFUSED:
-                print(
-                    'server refused to ' + Mode.name_from_code(datagram.mode) +
-                    ' reason: ' + Error.name_from_code(answer.a)
-                )
-            return answer if not session_query else Datagram.results_from_bytes(answer_bin)
+        answer = list()
+        last = False
+        while last is False:
+            answer_bin = self.socket.recv(MAX_DATAGRAM_SIZE)
+            try:
+                answer_data = Datagram.from_bytes(answer_bin)
+            except (bitstring.ReadError, ValueError, TypeError) as e:
+                utils.log('error reading datagram: ' + str(e), True)
+                print('error reading datagram')
+            else:
+                if answer_data.last:
+                    last = True
+
+                if answer_data.status == Status.ERROR:
+                    print(
+                        'error on server: ' + Mode.name_from_code(answer_data.mode) + ' - ' + Error.name_from_code(answer_data.a)
+                    )
+                elif answer_data.status == Status.REFUSED:
+                    print(
+                        'server refused to ' + Mode.name_from_code(answer_data.mode) +
+                        ' reason: ' + Error.name_from_code(answer_data.a)
+                    )
+                answer.append(answer_data)
+
+        return answer
 
     def __connect(self) -> None:
         self.connected_lock.acquire()
         utils.log('connecting to : ' + self.host + ':' + str(self.port))
         self.socket.connect((self.host, self.port))
         datagram = Datagram(Status.NEW, Mode.CONNECT)
-        answer = self.__send_datagram(datagram)
+        answer = self.__send_datagram(datagram)[0]
         self.session_id = answer.session_id
         if answer.status == Status.OK:
             utils.log('connected to : ' + self.host + ':' + str(self.port))
-
             self.connected = True
         else:
             utils.log(self.host + ':' + str(self.port) + ' refused to connect')
@@ -108,7 +117,7 @@ class Client:
         self.connected_lock.acquire()
         utils.log('disconnecting from : ' + self.host + ':' + str(self.port))
         datagram = Datagram(Status.NEW, Mode.DISCONNECT, self.session_id)
-        answer = self.__send_datagram(datagram)
+        answer = self.__send_datagram(datagram)[0]
         if answer.status == Status.OK:
             utils.log('disconnected from : ' + self.host + ':' + str(self.port))
             self.socket.close()
@@ -124,10 +133,10 @@ class Client:
         while self.connected:
             self.connected_lock.acquire()
             datagram = Datagram(Status.NEW, Mode.IS_ALIVE, self.session_id)
-            answer: Datagram
+            answer: List[Datagram]
 
             try:
-                answer = self.__send_datagram(datagram)
+                answer = self.__send_datagram(datagram)[0]
             except (ConnectionAbortedError, ConnectionResetError):
                 utils.log('server went down')
                 self.connected = False
@@ -142,35 +151,34 @@ class Client:
 
     def __operation(self, operation: int, a: float, b: float):
         datagram = Datagram(Status.NEW, Mode.OPERATION, self.session_id, operation, a, b)
-        answer = self.__send_datagram(datagram)
+        answer = self.__send_datagram(datagram)[0]
         if answer.status == Status.OK:
             print(str(answer.result) + '\t:' + str(answer.result_id))
 
     def __query_by_session_id(self):
         datagram = Datagram(Status.NEW, Mode.QUERY_BY_SESSION_ID, self.session_id)
-        answer = self.__send_datagram(datagram, True)
-        if answer.status == Status.OK:
-            for result in answer.results:
+        answer = self.__send_datagram(datagram)
+        if answer[0].status == Status.OK:
+            for result in answer:
                 # TODO: [Artur] improve presentation of results [maybe method in utils used both by client and server?]
-                print('session_id = ' + str(result[1]) +
-                      ' result id = ' + str(result[6]) +
-                      ' operation: ' + str(Operation.name_from_code(result[2])) +
-                      ' a = ' + str(result[3]) +
-                      ' b = ' + str(result[4]) +
-                      ' result = ' + str(result[5]))
+                print('session_id = ' + str(result.session_id) +
+                      ' result id = ' + str(result.result_id) +
+                      ' operation: ' + str(Operation.name_from_code(result.operation)) +
+                      ' a = ' + str(result.a) +
+                      ' b = ' + str(result.b) +
+                      ' result = ' + str(result.result))
 
     def __query_by_result_id(self, result_id: int):
-        datagram = Datagram(Status.NEW, Mode.QUERY_BY_RESULT_ID, self.session_id, a=result_id)
-        answer = self.__send_datagram(datagram)
+        datagram = Datagram(Status.NEW, Mode.QUERY_BY_RESULT_ID, self.session_id, result_id=result_id)
+        answer = self.__send_datagram(datagram)[0]
         if answer.status == Status.OK:
             # TODO: [Artur] improve presentation of result
-            print(answer)
-            print('session_id = ' + str(result[1]) +
-                  ' result id = ' + str(result[6]) +
-                  ' operation: ' + str(Operation.name_from_code(result[2])) +
-                  ' a = ' + str(result[3]) +
-                  ' b = ' + str(result[4]) +
-                  ' result = ' + str(result[5]))
+            print('session_id = ' + str(answer.session_id) +
+                  ' result id = ' + str(answer.result_id) +
+                  ' operation: ' + str(Operation.name_from_code(answer.operation)) +
+                  ' a = ' + str(answer.a) +
+                  ' b = ' + str(answer.b) +
+                  ' result = ' + str(answer.result))
 
 
 def main():
