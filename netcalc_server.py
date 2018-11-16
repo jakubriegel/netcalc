@@ -149,9 +149,8 @@ class Server(Thread):
         utils.log('received call for ' + Operation.name_from_code(operation) + ' from session: ' + str(session_id))
         answer = Datagram(Status.OK, Mode.OPERATION, session_id, operation, num_a, num_b)
         answer.result_id = self.next_result_id
-
+        self.next_result_id += 1
         result = 0
-        result_id = self.next_result_id
 
         if operation == Operation.POWER:
             result = num_a**num_b
@@ -163,11 +162,6 @@ class Server(Thread):
             result = factorial(num_a)/(factorial(num_a-num_b)*factorial(num_b))
 
         answer.result = result
-        # result_tuple = (session_id, operation, num_a, num_b, result, result_id,)
-
-        # self.results_storage[session_id][result_id] = result_tuple
-        self.next_result_id += 1
-
         return answer.get_bytes()
 
     def __query_by_session_id(self, session_id: int) -> bytes:
