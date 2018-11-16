@@ -10,7 +10,7 @@ from threading import Thread, Lock
 from common.Datagram import Datagram
 from common import utils
 from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, Error, MAX_DATAGRAM_SIZE
-
+from typing import List
 
 class Server(Thread):
 
@@ -26,6 +26,13 @@ class Server(Thread):
 
         self.next_result_id = 1
         self.results_storage = {}
+        self.results_storage[0] = {
+            1: (0, 4.0, .5, -1, 2.0),
+            2: (0, 4.0, .5, -1, 2.0),
+            3: (0, 4.0, .5, -1, 2.0),
+            4: (0, 4.0, .5, -1, 2.0),
+            5: (0, 4.0, .5, -1, 2.0)
+        }
 
     def run(self) -> None:
         self.listen()
@@ -82,7 +89,7 @@ class Server(Thread):
         utils.log('listening stopped')
 
     def handle_incoming_connection(self, connection: socket, address: tuple, handler) -> None:
-        session_id = 1
+        session_id = 0
         while self.sessions[handler]:
             try:
                 data = connection.recv(MAX_DATAGRAM_SIZE)
@@ -103,17 +110,17 @@ class Server(Thread):
                         elif datagram.mode == Mode.OPERATION:
                             answer = self.__operation(datagram.session_id, datagram.operation, datagram.a, datagram.b)
                         elif datagram.mode == Mode.QUERY_BY_SESSION_ID:
-                            answer = self.__query_by_session_id(datagram.session_id)
+                            answer = self.__query_by_session_id(datagram.session_id, connection)
                         elif datagram.mode == Mode.QUERY_BY_RESULT_ID:
-                            answer = self.__query_by_result_id(datagram.session_id, datagram.a)
+                            answer = self.__query_by_result_id(datagram.session_id, datagram.result_id)
                     else:
                         answer = self.__error(Error.UNAUTHORISED)
-                except (bitstring.ReadError, ValueError, TypeError):
-                    answer = self.__error(Error.CANNOT_READ_DATAGRAM, Mode.ERROR)
+                except (bitstring.ReadError, ValueError, TypeError) as e:
+                    utils.log("datagram exception: " + str(e), True)
+                    answer = self.__error(Error.CANNOT_READ_DATAGRAM, Mode.ERROR, session_id)
                 except Exception as e:
-                    print(e)
-                except:
-                    answer = self.__error(Error.INTERNAL_SERVER_ERROR, Mode.ERROR)
+                    utils.log("exception: " + str(e), True)
+                    answer = self.__error(Error.INTERNAL_SERVER_ERROR, Mode.ERROR, session_id)
                 finally:
                     connection.sendall(answer)
             except (ConnectionAbortedError, ConnectionResetError):
@@ -149,9 +156,8 @@ class Server(Thread):
         utils.log('received call for ' + Operation.name_from_code(operation) + ' from session: ' + str(session_id))
         answer = Datagram(Status.OK, Mode.OPERATION, session_id, operation, num_a, num_b)
         answer.result_id = self.next_result_id
-
+        self.next_result_id += 1
         result = 0
-        result_id = self.next_result_id
 
         if operation == Operation.POWER:
             result = num_a**num_b
@@ -163,20 +169,31 @@ class Server(Thread):
             result = factorial(num_a)/(factorial(num_a-num_b)*factorial(num_b))
 
         answer.result = result
-        # result_tuple = (session_id, operation, num_a, num_b, result, result_id,)
-
-        # self.results_storage[session_id][result_id] = result_tuple
-        self.next_result_id += 1
-
         return answer.get_bytes()
 
-    def __query_by_session_id(self, session_id: int) -> bytes:
+    def __query_by_session_id(self, session_id: int, connection: socket) -> bytes:
         # TODO: [Artur] implement querying by session id
+        session_id = 0  # temp
         utils.log('querying by session_id: ' + str(session_id))
-        answer = Datagram.from_result_list(
-            Status.OK, Mode.QUERY_BY_SESSION_ID, session_id, self.results_storage[session_id])
+        results = self.results_storage[session_id]
 
-        return answer.get_bytes()
+        answer: List[Datagram] = list()
+        for result_id, result in results.items():
+            answer.append(Datagram(
+                Status.OK, Mode.QUERY_BY_SESSION_ID, session_id,
+                operation=result[0],
+                a=result[1],
+                b=result[2],
+                result=result[4],
+                result_id=result_id,
+                last=False
+            ))
+
+        for i in range(0, len(answer)-1):
+            connection.sendall(answer[i].get_bytes())
+
+        answer[len(answer) - 1].last = True
+        return answer[len(answer)-1].get_bytes()
 
     def __query_by_session_id_cmd(self, session_id: int) -> None:
         # TODO: [Artur] implement querying by session id from terminal
@@ -191,9 +208,14 @@ class Server(Thread):
 
     def __query_by_result_id(self, session_id: int, result_id: int) -> bytes:
         # TODO: [Artur] implement querying by result id
+        session_id = 0  # temp
         answer = Datagram(
-            Status.OK, Mode.QUERY_BY_RESULT_ID, self.results_storage[session_id][result_id],
-            calendar.timegm(time.gmtime())
+            Status.OK, Mode.QUERY_BY_RESULT_ID, session_id,
+            operation=self.results_storage[session_id][result_id][0],
+            a=self.results_storage[session_id][result_id][1],
+            b=self.results_storage[session_id][result_id][2],
+            result=self.results_storage[session_id][result_id][4],
+            result_id=result_id,
         )
         print(answer)
         return answer.get_bytes()
