@@ -160,12 +160,11 @@ class Client:
         answer = self.__send_datagram(datagram)
         if answer[0].status == Status.OK:
             for result in answer:
-                # TODO: [Artur] improve presentation of results [maybe method in utils used both by client and server?]
-                print('session_id = ' + str(result.session_id) +
-                      ' result id = ' + str(result.result_id) +
-                      ' operation: ' + str(Operation.name_from_code(result.operation)) +
-                      ' a = ' + str(result.a) +
-                      ' b = ' + str(result.b) +
+                print('session_id = ' + str(result.session_id) + "\t" +
+                      ' result id = ' + str(result.result_id) + "\t" +
+                      ' operation: ' + str(Operation.name_from_code(result.operation)) + "\t" +
+                      ' a = ' + str(result.a) + "\t" +
+                      ' b = ' + str(result.b) + "\t" +
                       ' result = ' + str(result.result))
 
     def __query_by_result_id(self, result_id: int):
@@ -173,11 +172,11 @@ class Client:
         answer = self.__send_datagram(datagram)[0]
         if answer.status == Status.OK:
             # TODO: [Artur] improve presentation of result
-            print('session_id = ' + str(answer.session_id) +
-                  ' result id = ' + str(answer.result_id) +
-                  ' operation: ' + str(Operation.name_from_code(answer.operation)) +
-                  ' a = ' + str(answer.a) +
-                  ' b = ' + str(answer.b) +
+            print('session_id = ' + str(answer.session_id) + "\t" +
+                  ' result id = ' + str(answer.result_id) + "\t" +
+                  ' operation: ' + str(Operation.name_from_code(answer.operation)) + "\t" +
+                  ' a = ' + str(answer.a) + "\t" +
+                  ' b = ' + str(answer.b) + "\t" +
                   ' result = ' + str(answer.result))
 
 

@@ -26,13 +26,13 @@ class Server(Thread):
 
         self.next_result_id = 1
         self.results_storage = {}
-        self.results_storage[0] = {
-            1: (0, 4.0, .5, -1, 2.0),
-            2: (0, 4.0, .5, -1, 2.0),
-            3: (0, 4.0, .5, -1, 2.0),
-            4: (0, 4.0, .5, -1, 2.0),
-            5: (0, 4.0, .5, -1, 2.0)
-        }
+        # self.results_storage[0] = {
+        #   1: (0, 4.0, .5, -1, 2.0),
+        #   2: (0, 4.0, .5, -1, 2.0),
+        #   3: (0, 4.0, .5, -1, 2.0),
+        #   4: (0, 4.0, .5, -1, 2.0),
+        #   5: (0, 4.0, .5, -1, 2.0)
+        # }
 
     def run(self) -> None:
         self.listen()
@@ -101,6 +101,7 @@ class Server(Thread):
                     answer: bytes
                     if datagram.mode == Mode.CONNECT:
                         answer, session_id = self.__connect(address)
+                        self.results_storage[session_id] = {}
                     elif datagram.session_id == session_id:
                         if datagram.mode == Mode.IS_ALIVE:
                             answer = self.__is_alive(datagram.session_id, handler)
@@ -156,7 +157,6 @@ class Server(Thread):
         utils.log('received call for ' + Operation.name_from_code(operation) + ' from session: ' + str(session_id))
         answer = Datagram(Status.OK, Mode.OPERATION, session_id, operation, num_a, num_b)
         answer.result_id = self.next_result_id
-        self.next_result_id += 1
         result = 0
 
         if operation == Operation.POWER:
@@ -164,16 +164,25 @@ class Server(Thread):
         elif operation == Operation.LOG:
             result = log(num_b)/log(num_a)
         elif operation == Operation.OP_3:
+            if num_a*num_b < 0:
+                return self.__error(5, Mode.OPERATION, session_id, self.next_result_id)
             result = sqrt(num_a*num_b)
         elif operation == Operation.OP_4:
+            if num_b > num_a or num_a < 0 or num_b < 0:
+                return self.__error(5, Mode.OPERATION, session_id, self.next_result_id)
             result = factorial(num_a)/(factorial(num_a-num_b)*factorial(num_b))
+
+        self.results_storage[session_id][self.next_result_id] = \
+            (operation, num_a, num_b, session_id, result, self.next_result_id)
+
+        self.next_result_id += 1
 
         answer.result = result
         return answer.get_bytes()
 
     def __query_by_session_id(self, session_id: int, connection: socket) -> bytes:
         # TODO: [Artur] implement querying by session id
-        session_id = 0  # temp
+        # session_id = 0  # temp
         utils.log('querying by session_id: ' + str(session_id))
         results = self.results_storage[session_id]
 
@@ -186,8 +195,7 @@ class Server(Thread):
                 b=result[2],
                 result=result[4],
                 result_id=result_id,
-                last=False
-            ))
+                ))
 
         for i in range(0, len(answer)-1):
             connection.sendall(answer[i].get_bytes())
@@ -197,14 +205,18 @@ class Server(Thread):
 
     def __query_by_session_id_cmd(self, session_id: int) -> None:
         # TODO: [Artur] implement querying by session id from terminal
-        results = self.results_storage[session_id]
-        for result in results:
-            print('session_id = ' + str(result[1]) +
-                  ' result id = ' + str(result[6]) +
-                  ' operation: ' + str(Operation.name_from_code(result[2])) +
-                  ' a = ' + str(result[3]) +
-                  ' b = ' + str(result[4]) +
-                  ' result = ' + str(result[5]))
+        results = None
+        if session_id in self.results_storage:
+            results = self.results_storage[session_id]
+        else:
+            self.__error(4, Mode.QUERY_BY_SESSION_ID_CMD)
+        for result_id, result in results.items():
+            print('session_id = ' + str(session_id) + "\t" +
+                  ' result id = ' + str(result[5]) + "\t" +
+                  ' operation: ' + str(Operation.name_from_code(result[0])) + "\t" +
+                  ' a = ' + str(result[1]) + "\t" +
+                  ' b = ' + str(result[2]) + "\t" +
+                  ' result = ' + str(result[4]))
 
     def __query_by_result_id(self, session_id: int, result_id: int) -> bytes:
         # TODO: [Artur] implement querying by result id
@@ -223,21 +235,22 @@ class Server(Thread):
     def __query_by_result_id_cmd(self, result_id: int) -> None:
         # TODO: [Artur] implement querying by result id from terminal
         result = None
+        results = self.results_storage
 
-        for i in range(0, self.next_id):
-            if self.results_storage[i][result_id]:
-                result = self.results_storage[i][result_id]
+        for session_id, res in results.items():
+            if result_id in res:
+                result = res[result_id]
 
         if result:
-            print('session_id = ' + str(result[1]) +
-                  ' result id = ' + str(result[6]) +
-                  ' operation: ' + str(Operation.name_from_code(result[2])) +
-                  ' a = ' + str(result[3]) +
-                  ' b = ' + str(result[4]) +
-                  ' result = ' + str(result[5]))
+            print('session_id = ' + str(session_id) + "\t" +
+                  ' result id = ' + str(result[5]) + "\t" +
+                  ' operation: ' + str(Operation.name_from_code(result[0])) + "\t" +
+                  ' a = ' + str(result[1]) + "\t" +
+                  ' b = ' + str(result[2]) + "\t" +
+                  ' result = ' + str(result[4]))
 
         else:
-            print(self.__error(Error.NOT_EXISTING_DATA))
+            self.__error(4, Mode.QUERY_BY_RESULT_ID_CMD)
 
     @staticmethod
     def __error(code: int, mode: int = Mode.ERROR, session_id: int = 0, operation: int = 0) -> bytes:

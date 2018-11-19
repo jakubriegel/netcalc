@@ -76,6 +76,7 @@ class Error:
     CANNOT_READ_DATAGRAM = 2
     INTERNAL_SERVER_ERROR = 3
     NOT_EXISTING_DATA = 4
+    INVALID_ARGUMENT = 5
 
     @staticmethod
     def name_from_code(code: int) -> str:
@@ -89,6 +90,8 @@ class Error:
             return 'INTERNAL_SERVER_ERROR'
         elif code == Error.NOT_EXISTING_DATA:
             return 'NOT_EXISTING_DATA'
+        elif code == Error.INVALID_ARGUMENT:
+            return 'INVALID_ARGUMENT'
         else:
             return 'unknown error'
 
