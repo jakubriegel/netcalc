@@ -227,7 +227,7 @@ class Server(Thread):
                       ' result = ' + str(result[4]))
 
         else:
-            self.__error(Error.NOT_EXISTING_DATA, Mode.QUERY_BY_RESULT_ID)
+            self.__error(Error.NOT_EXISTING_DATA, Mode.QUERY_BY_SESSION_ID)
 
     def __query_by_result_id(self, session_id: int, given_session_id: int, result_id: int) -> bytes:
         utils.log('querying by result id: ' + str(result_id) + 'for ' + str(given_session_id))
