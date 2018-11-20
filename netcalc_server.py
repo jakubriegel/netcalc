@@ -50,10 +50,15 @@ class Server(Thread):
             else:
                 command = command.split()
                 if len(command) == 2:
-                    if command[0] == Mode.QUERY_BY_SESSION_ID_CMD:
-                        self.__query_by_session_id_cmd(int(command[1]))
-                    elif command[0] == Mode.QUERY_BY_RESULT_ID_CMD:
-                        self.__query_by_result_id_cmd(int(command[1]))
+                    try:
+                        int(command[1])
+                    except ValueError:
+                        print('invalid argument')
+                    else:
+                        if command[0] == Mode.QUERY_BY_SESSION_ID_CMD:
+                            self.__query_by_session_id_cmd(int(command[1]))
+                        elif command[0] == Mode.QUERY_BY_RESULT_ID_CMD:
+                            self.__query_by_result_id_cmd(int(command[1]))
                 else:
                     print('invalid command')
 

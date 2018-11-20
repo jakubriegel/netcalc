@@ -51,25 +51,35 @@ class Client:
                 if command[0] == Mode.QUERY_BY_SESSION_ID_CMD and len(command) == 1:
                     self.__query_by_session_id()
                 elif command[0] == Mode.QUERY_BY_RESULT_ID_CMD and len(command) == 2:
-                    self.__query_by_result_id(int(command[1]))
-                elif len(command) == 3:
-                    operation: int
-                    if command[0] == Operation.POWER_CMD:
-                        operation = Operation.POWER
-                    elif command[0] == Operation.LOG_CMD:
-                        operation = Operation.LOG
-                    elif command[0] == Operation.GEO_MEAN_CMD:
-                        operation = Operation.GEO_MEAN
-                    elif command[0] == Operation.BIN_COE_CMD:
-                        operation = Operation.BIN_COE
-
-                    a = float(command[1])
-                    b = float(command[2])
-
-                    if a == float('inf') or b == float('inf'):
-                        print('numbers exceed value limit')
+                    try:
+                        result_id = int(command[1])
+                    except ValueError:
+                        print('invalid argument')
                     else:
-                        self.__operation(operation, a, b)
+                        self.__query_by_result_id(result_id)
+                elif len(command) == 3:
+                    try:
+                        a = float(command[1])
+                        b = float(command[2])
+                    except ValueError:
+                        print('invalid arguments')
+                    else:
+                        operation: int = -1
+                        if command[0] == Operation.POWER_CMD:
+                            operation = Operation.POWER
+                        elif command[0] == Operation.LOG_CMD:
+                            operation = Operation.LOG
+                        elif command[0] == Operation.GEO_MEAN_CMD:
+                            operation = Operation.GEO_MEAN
+                        elif command[0] == Operation.BIN_COE_CMD:
+                            operation = Operation.BIN_COE
+
+                        if a == float('inf') or b == float('inf'):
+                            print('numbers exceed value limit')
+                        if operation == -1:
+                            print('invalid command')
+                        else:
+                            self.__operation(operation, a, b)
                 else:
                     print('invalid command')
 
