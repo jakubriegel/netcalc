@@ -34,30 +34,6 @@ class Datagram:
 
         return cls(status, mode, session_id, operation, a, b, result, result_id, last)
 
-    @classmethod
-    def results_from_bytes(cls, binary: bytes):
-        datagram = ConstBitStream(bytes=binary)
-
-        status = datagram.read('uint:2')
-        mode = datagram.read('uint:3')
-        session_id = datagram.read('uint:16') if datagram.length >= 21 else None
-        results = []
-        while datagram.pos + 322 < datagram.length:
-            results.append((
-                datagram.read('uint:64'),   # result_id
-                datagram.read('uint:2'),    # operation
-                datagram.read('float:64'),  # a
-                datagram.read('float:64'),  # b
-                datagram.read('float:64'),  # result
-                datagram.read('uint:64')    # timestamp
-            ))
-
-        return cls.from_result_list(status, mode, session_id, results)
-
-    @classmethod
-    def from_result_list(cls, status: int, mode: int, session_id: int, results: list):
-        return cls(status, mode, session_id, results=results)
-
     def get_bytes(self) -> bytes:
         datagram = BitArray()
 
