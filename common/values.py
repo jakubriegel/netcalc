@@ -52,11 +52,11 @@ class Operation:
     LOG = 1
     LOG_CMD = 'log'
 
-    OP_3 = 2
-    OP_3_CMD = 'GM'  # Geometric Mean
+    GEO_MEAN = 2
+    GEO_MEAN_CMD = 'GM'  # Geometric Mean
 
-    OP_4 = 3
-    OP_4_CMD = 'aCb'  # Binomial coefficient
+    BIN_COE = 3
+    BIN_COE_CMD = 'aCb'  # Binomial coefficient
 
     @staticmethod
     def name_from_code(code: int) -> str:
@@ -64,10 +64,10 @@ class Operation:
             return Operation.POWER_CMD
         elif code == Operation.LOG:
             return Operation.LOG_CMD
-        elif code == Operation.OP_3:
-            return Operation.OP_3_CMD
-        elif code == Operation.OP_4:
-            return Operation.OP_4_CMD
+        elif code == Operation.GEO_MEAN:
+            return Operation.GEO_MEAN_CMD
+        elif code == Operation.BIN_COE:
+            return Operation.BIN_COE_CMD
 
 
 class Error:
@@ -77,6 +77,7 @@ class Error:
     INTERNAL_SERVER_ERROR = 3
     NOT_EXISTING_DATA = 4
     INVALID_ARGUMENT = 5
+    MAX_VALUE_EXCEEDED = 6
 
     @staticmethod
     def name_from_code(code: int) -> str:
@@ -92,6 +93,8 @@ class Error:
             return 'NOT_EXISTING_DATA'
         elif code == Error.INVALID_ARGUMENT:
             return 'INVALID_ARGUMENT'
+        elif code == Error.MAX_VALUE_EXCEEDED:
+            return 'MAX_VALUE_EXCEEDED'
         else:
             return 'unknown error'
 

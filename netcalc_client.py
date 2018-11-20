@@ -31,8 +31,8 @@ class Client:
         print('You can now use netcalc')
         print(Operation.POWER_CMD + ' a b\t: raise a to the power of b')
         print(Operation.LOG_CMD + ' a b\t\t: get the logarithm of b of the base of a')
-        print(Operation.OP_3_CMD + ' a b\t\t: get the geometric mean of a and b')
-        print(Operation.OP_4_CMD + ' a b\t\t: get the value of binomial coefficient a choose b')
+        print(Operation.GEO_MEAN_CMD + ' a b\t\t: get the geometric mean of a and b')
+        print(Operation.BIN_COE_CMD + ' a b\t\t: get the value of binomial coefficient a choose b')
         print(Mode.QUERY_BY_SESSION_ID_CMD + '\t\t: get all calculations')
         print(Mode.QUERY_BY_RESULT_ID_CMD + ' id\t: get calculation by its id')
         print('exit\t\t: exit netcalc')
@@ -58,15 +58,18 @@ class Client:
                         operation = Operation.POWER
                     elif command[0] == Operation.LOG_CMD:
                         operation = Operation.LOG
-                    elif command[0] == Operation.OP_3_CMD:
-                        operation = Operation.OP_3
-                    elif command[0] == Operation.OP_4_CMD:
-                        operation = Operation.OP_4
+                    elif command[0] == Operation.GEO_MEAN_CMD:
+                        operation = Operation.GEO_MEAN
+                    elif command[0] == Operation.BIN_COE_CMD:
+                        operation = Operation.BIN_COE
 
                     a = float(command[1])
                     b = float(command[2])
 
-                    self.__operation(operation, a, b)
+                    if a == float('inf') or b == float('inf'):
+                        print('numbers exceed value limit')
+                    else:
+                        self.__operation(operation, a, b)
                 else:
                     print('invalid command')
 
