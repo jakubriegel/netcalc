@@ -7,7 +7,7 @@ from threading import Thread, Lock
 
 from common.Datagram import Datagram
 from common import utils
-from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, Error, MAX_DATAGRAM_SIZE
+from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, Error, DATAGRAM_SIZE
 from typing import List
 
 
@@ -84,7 +84,7 @@ class Server(Thread):
         session_id = 0
         while self.sessions[handler]:
             try:
-                data = connection.recv(MAX_DATAGRAM_SIZE)
+                data = connection.recv(DATAGRAM_SIZE)
                 answer: Datagram = None
                 # noinspection PyBroadException
                 try:
@@ -222,7 +222,7 @@ class Server(Thread):
                       ' result = ' + str(result[4]))
 
         else:
-            self.__error(Error.NOT_EXISTING_DATA, Mode.QUERY_BY_SESSION_ID_CMD)
+            self.__error(Error.NOT_EXISTING_DATA, Mode.QUERY_BY_RESULT_ID)
 
     def __query_by_result_id(self, session_id: int, given_session_id: int, result_id: int) -> bytes:
         utils.log('querying by result id: ' + str(result_id) + 'for ' + str(given_session_id))
@@ -268,11 +268,14 @@ class Server(Thread):
                   ' result = ' + str(result[4]))
 
         else:
-            self.__error(Error.NOT_EXISTING_DATA, Mode.QUERY_BY_RESULT_ID_CMD)
+            self.__error(Error.NOT_EXISTING_DATA, Mode.QUERY_BY_RESULT_ID)
 
     @staticmethod
     def __error(code: int, mode: int = Mode.ERROR, session_id: int = 0, operation: int = 0) -> bytes:
-        utils.log(Error.name_from_code(code) + ' on session: ' + str(session_id), True)
+        utils.log(
+            Error.name_from_code(code) + ' on session: ' + str(session_id) + ' mode: ' + Mode.name_from_code(mode),
+            True
+        )
         error = Datagram(Status.ERROR, mode, session_id, operation, a=code)
         return error.get_bytes()
 

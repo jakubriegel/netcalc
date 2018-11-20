@@ -4,7 +4,7 @@ import bitstring
 import time
 from threading import Thread, Lock
 from common import utils
-from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, MAX_DATAGRAM_SIZE, Error
+from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, DATAGRAM_SIZE, Error
 from common.Datagram import Datagram
 from typing import List
 
@@ -78,7 +78,7 @@ class Client:
         answer = list()
         last = False
         while last is False:
-            answer_bin = self.socket.recv(MAX_DATAGRAM_SIZE)
+            answer_bin = self.socket.recv(DATAGRAM_SIZE)
             try:
                 answer_data = Datagram.from_bytes(answer_bin)
             except (bitstring.ReadError, ValueError, TypeError) as e:
