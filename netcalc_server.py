@@ -159,11 +159,11 @@ class Server(Thread):
                 result = log(num_b)/log(num_a)
             elif operation == Operation.GEO_MEAN:
                 if num_a*num_b < 0:
-                    return self.__error(5, Mode.OPERATION, session_id, self.next_result_id)
+                    return self.__error(5, Mode.OPERATION, session_id, operation)
                 result = sqrt(num_a*num_b)
             elif operation == Operation.BIN_COE:
                 if num_b > num_a or num_a < 0 or num_b < 0:
-                    return self.__error(5, Mode.OPERATION, session_id, self.next_result_id)
+                    return self.__error(5, Mode.OPERATION, session_id, operation)
                 result = factorial(num_a)/(factorial(num_a-num_b)*factorial(num_b))
         except OverflowError:
             return self.__error(Error.MAX_VALUE_EXCEEDED, Mode.OPERATION, session_id, operation)
