@@ -4,7 +4,7 @@ import bitstring
 import time
 from threading import Thread, Lock
 from common import utils
-from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, MAX_DATAGRAM_SIZE, Error
+from common.values import Status, Mode, Operation, LOCAL_HOST, PORT, DATAGRAM_SIZE, Error
 from common.Datagram import Datagram
 from typing import List
 
@@ -31,8 +31,8 @@ class Client:
         print('You can now use netcalc')
         print(Operation.POWER_CMD + ' a b\t: raise a to the power of b')
         print(Operation.LOG_CMD + ' a b\t\t: get the logarithm of b of the base of a')
-        print(Operation.OP_3_CMD + ' a b\t\t: get the geometric mean of a and b')
-        print(Operation.OP_4_CMD + ' a b\t\t: get the value of binomial coefficient a choose b')
+        print(Operation.GEO_MEAN_CMD + ' a b\t\t: get the geometric mean of a and b')
+        print(Operation.BIN_COE_CMD + ' a b\t\t: get the value of binomial coefficient a choose b')
         print(Mode.QUERY_BY_SESSION_ID_CMD + '\t\t: get all calculations')
         print(Mode.QUERY_BY_RESULT_ID_CMD + ' id\t: get calculation by its id')
         print('exit\t\t: exit netcalc')
@@ -58,15 +58,18 @@ class Client:
                         operation = Operation.POWER
                     elif command[0] == Operation.LOG_CMD:
                         operation = Operation.LOG
-                    elif command[0] == Operation.OP_3_CMD:
-                        operation = Operation.OP_3
-                    elif command[0] == Operation.OP_4_CMD:
-                        operation = Operation.OP_4
+                    elif command[0] == Operation.GEO_MEAN_CMD:
+                        operation = Operation.GEO_MEAN
+                    elif command[0] == Operation.BIN_COE_CMD:
+                        operation = Operation.BIN_COE
 
                     a = float(command[1])
                     b = float(command[2])
 
-                    self.__operation(operation, a, b)
+                    if a == float('inf') or b == float('inf'):
+                        print('numbers exceed value limit')
+                    else:
+                        self.__operation(operation, a, b)
                 else:
                     print('invalid command')
 
@@ -75,7 +78,7 @@ class Client:
         answer = list()
         last = False
         while last is False:
-            answer_bin = self.socket.recv(MAX_DATAGRAM_SIZE)
+            answer_bin = self.socket.recv(DATAGRAM_SIZE)
             try:
                 answer_data = Datagram.from_bytes(answer_bin)
             except (bitstring.ReadError, ValueError, TypeError) as e:
@@ -160,12 +163,11 @@ class Client:
         answer = self.__send_datagram(datagram)
         if answer[0].status == Status.OK:
             for result in answer:
-                # TODO: [Artur] improve presentation of results [maybe method in utils used both by client and server?]
-                print('session_id = ' + str(result.session_id) +
-                      ' result id = ' + str(result.result_id) +
-                      ' operation: ' + str(Operation.name_from_code(result.operation)) +
-                      ' a = ' + str(result.a) +
-                      ' b = ' + str(result.b) +
+                print('session_id = ' + str(result.session_id) + "\t" +
+                      ' result id = ' + str(result.result_id) + "\t" +
+                      ' operation: ' + str(Operation.name_from_code(result.operation)) + "\t" +
+                      ' a = ' + str(result.a) + "\t" +
+                      ' b = ' + str(result.b) + "\t" +
                       ' result = ' + str(result.result))
 
     def __query_by_result_id(self, result_id: int):
@@ -173,11 +175,11 @@ class Client:
         answer = self.__send_datagram(datagram)[0]
         if answer.status == Status.OK:
             # TODO: [Artur] improve presentation of result
-            print('session_id = ' + str(answer.session_id) +
-                  ' result id = ' + str(answer.result_id) +
-                  ' operation: ' + str(Operation.name_from_code(answer.operation)) +
-                  ' a = ' + str(answer.a) +
-                  ' b = ' + str(answer.b) +
+            print('session_id = ' + str(answer.session_id) + "\t" +
+                  ' result id = ' + str(answer.result_id) + "\t" +
+                  ' operation: ' + str(Operation.name_from_code(answer.operation)) + "\t" +
+                  ' a = ' + str(answer.a) + "\t" +
+                  ' b = ' + str(answer.b) + "\t" +
                   ' result = ' + str(answer.result))
 
 
