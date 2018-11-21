@@ -10,6 +10,8 @@ from typing import List
 
 
 class Client:
+    """ Implementation of client application """
+
     def __init__(self, host: str, port: int) -> None:
         self.host = host
         self.port = port
@@ -20,6 +22,7 @@ class Client:
         self.is_alive_handler = None
 
     def start(self):
+        """ Starts the client """
         self.__connect()
         if self.connected:
             self.is_alive_handler = Thread(name='is_alive_handler', target=self.__is_alive)
@@ -28,6 +31,8 @@ class Client:
             self.is_alive_handler.join()
 
     def __menu(self):
+        """ Starts application CLI """
+
         print('You can now use netcalc')
         print(Operation.POWER_CMD + ' a b\t: raise a to the power of b')
         print(Operation.LOG_CMD + ' a b\t\t: get the logarithm of b of the base of a')
@@ -84,20 +89,33 @@ class Client:
                     print('invalid command')
 
     def __send_datagram(self, datagram: Datagram) -> List[Datagram]:
+        """
+        Sends data to the server
+
+        :param datagram: data to send
+        :return: list of answers
+        """
         self.socket.sendall(datagram.get_bytes())
         answer = list()
         last = False
+
+        # receive data until last flag is send to true
         while last is False:
+            # get data
             answer_bin = self.socket.recv(DATAGRAM_SIZE)
             try:
+                # decode data
                 answer_data = Datagram.from_bytes(answer_bin)
             except (bitstring.ReadError, ValueError, TypeError) as e:
+                # if data was unreadable
                 utils.log('error reading datagram: ' + str(e), True)
                 print('error reading datagram')
             else:
+                # check last flag
                 if answer_data.last:
                     last = True
 
+                # proceed received errors
                 if answer_data.status == Status.ERROR:
                     print(
                         'error on server: ' + Mode.name_from_code(answer_data.mode) + ' - ' + Error.name_from_code(answer_data.a)
@@ -107,14 +125,20 @@ class Client:
                         'server refused to ' + Mode.name_from_code(answer_data.mode) +
                         ' reason: ' + Error.name_from_code(answer_data.a)
                     )
+
+                # add received data to answers
                 answer.append(answer_data)
 
         return answer
 
     def __connect(self) -> None:
+        """ Connects to the server """
+
         self.connected_lock.acquire()
         utils.log('connecting to : ' + self.host + ':' + str(self.port))
+        # connect to the server
         self.socket.connect((self.host, self.port))
+        # get session id
         datagram = Datagram(Status.NEW, Mode.CONNECT)
         answer = self.__send_datagram(datagram)[0]
         self.session_id = answer.session_id
@@ -127,12 +151,16 @@ class Client:
         self.connected_lock.release()
 
     def __disconnect(self) -> None:
+        """ Disconnects from the server """
+
         self.connected_lock.acquire()
         utils.log('disconnecting from : ' + self.host + ':' + str(self.port))
+        # send disconnect request
         datagram = Datagram(Status.NEW, Mode.DISCONNECT, self.session_id)
         answer = self.__send_datagram(datagram)[0]
         if answer.status == Status.OK:
             utils.log('disconnected from : ' + self.host + ':' + str(self.port))
+            # close connection
             self.socket.close()
             self.connected = False
         else:
@@ -143,6 +171,8 @@ class Client:
         self.connected_lock.release()
 
     def __is_alive(self) -> None:
+        """ Checks if server is still available"""
+
         while self.connected:
             self.connected_lock.acquire()
             datagram = Datagram(Status.NEW, Mode.IS_ALIVE, self.session_id)
@@ -194,6 +224,7 @@ class Client:
 
 
 def main():
+    """ Starts the application """
     args = sys.argv
     host = args[1] if len(args) > 1 else LOCAL_HOST
     port = int(args[2]) if len(args) > 2 else PORT

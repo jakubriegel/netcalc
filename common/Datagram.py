@@ -2,6 +2,8 @@ from bitstring import BitArray, ConstBitArray, ConstBitStream
 
 
 class Datagram:
+    """ Stores, prepares and retrieves data sent over network """
+
     def __init__(
             self,
             status: int, mode: int, session_id: int=0,
@@ -21,6 +23,10 @@ class Datagram:
 
     @classmethod
     def from_bytes(cls, binary: bytes):
+        """ Parses retrieved data into python object
+        :param binary: data to parse
+        """
+
         datagram = ConstBitStream(bytes=binary)
         operation = datagram.read('uint:2')
         a = datagram.read('float:64')
@@ -35,6 +41,8 @@ class Datagram:
         return cls(status, mode, session_id, operation, a, b, result, result_id, last)
 
     def get_bytes(self) -> bytes:
+        """ Parses data to binary format """
+
         datagram = BitArray()
 
         datagram.append(ConstBitArray(uint=self.operation, length=2))

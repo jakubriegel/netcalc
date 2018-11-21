@@ -1,10 +1,10 @@
-# utils
+# connection utils
 LOCAL_HOST = '127.0.0.1'
 PORT = 1500
-
 DATAGRAM_SIZE = 248
 
 
+# datagram consts
 class Status:
     NEW = 0      # 00
     OK = 1       # 01
